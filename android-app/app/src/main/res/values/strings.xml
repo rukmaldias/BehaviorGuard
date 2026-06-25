@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">BehaviorGuard Demo</string>
+    <string name="app_subtitle">On-device behavioral biometrics</string>
+    <string name="enroll_status_init">Enrollment: 0 / 5 sessions</string>
+    <string name="risk_label">Risk score:</string>
+    <string name="confidence_label">Confidence:</string>
+    <string name="input_hint">Type here to generate behavioral signals…</string>
+    <string name="btn_start_session">Start Session</string>
+    <string name="btn_end_session">End Session</string>
+    <string name="btn_clear_profile">Clear Profile</string>
+    <string name="status_init">Ready. Press Start Session to begin collecting signals.</string>
+</resources>

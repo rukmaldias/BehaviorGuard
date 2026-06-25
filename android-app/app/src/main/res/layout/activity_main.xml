@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    activity_main.xml — BehaviorGuard Demo
+
+    Layout sections:
+      1. Title
+      2. Enrollment progress bar + label
+      3. Risk score display (shown after enrollment)
+      4. Input field — typing here feeds keystroke events
+      5. Buttons: Start Session / End Session / Clear Profile
+      6. Scrollable status log
+-->
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/app_name"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:paddingBottom="4dp" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/app_subtitle"
+        android:textSize="12sp"
+        android:paddingBottom="12dp" />
+
+    <!-- Enrollment progress -->
+    <LinearLayout
+        android:id="@+id/layoutEnrollment"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingBottom="8dp">
+
+        <TextView
+            android:id="@+id/tvEnrollStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="@string/enroll_status_init"
+            android:textSize="13sp" />
+
+        <ProgressBar
+            android:id="@+id/progressEnroll"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:max="5"
+            android:progress="0" />
+    </LinearLayout>
+
+    <!-- Risk score card (hidden during enrollment) -->
+    <LinearLayout
+        android:id="@+id/layoutScore"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingBottom="8dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/risk_label"
+            android:textSize="14sp"
+            android:paddingEnd="8dp" />
+
+        <TextView
+            android:id="@+id/tvScore"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:text="—" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/confidence_label"
+            android:textSize="14sp"
+            android:paddingStart="16dp"
+            android:paddingEnd="4dp" />
+
+        <TextView
+            android:id="@+id/tvConfidence"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="14sp"
+            android:text="—" />
+    </LinearLayout>
+
+    <!-- Typing input — feed keystrokes to BehaviorGuard -->
+    <EditText
+        android:id="@+id/etInput"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="@string/input_hint"
+        android:inputType="text"
+        android:paddingBottom="8dp" />
+
+    <!-- Session controls -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingBottom="8dp">
+
+        <Button
+            android:id="@+id/btnStartSession"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="@string/btn_start_session"
+            android:layout_marginEnd="4dp" />
+
+        <Button
+            android:id="@+id/btnEndSession"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:enabled="false"
+            android:text="@string/btn_end_session"
+            android:layout_marginStart="4dp" />
+    </LinearLayout>
+
+    <Button
+        android:id="@+id/btnClearProfile"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/btn_clear_profile"
+        android:paddingBottom="8dp" />
+
+    <!-- Scrollable status log -->
+    <ScrollView
+        android:id="@+id/scrollStatus"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="8dp"
+        android:background="#F0F0F0"
+        android:padding="8dp">
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:fontFamily="monospace"
+            android:textSize="11sp"
+            android:text="@string/status_init" />
+
+    </ScrollView>
+
+</LinearLayout>

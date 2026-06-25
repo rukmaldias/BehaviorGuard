@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Exclude the encrypted baseline profile blob from Android Auto Backup.
+    The profile is encrypted with an Android Keystore key that is device-bound
+    and not included in backups — restoring the blob to a different device
+    leaves it permanently unreadable.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="behavior_guard_prefs.xml" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="behavior_guard_prefs.xml" />
+    </device-transfer>
+</data-extraction-rules>

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    AndroidManifest.xml — BehaviorGuard Demo Application
+
+    PERMISSIONS
+    ══════════════════════════════════════════════════════════════════════════════
+    BehaviorGuard requires NO dangerous permissions for its core operations:
+
+      • Touch events         → delivered by the system to any View, no permission
+      • SensorManager        → TYPE_GYROSCOPE and TYPE_LINEAR_ACCELERATION are
+                               normal-permission sensors, no manifest declaration needed
+      • Android Keystore     → hardware-backed key storage, no permission needed
+      • SharedPreferences    → own-app private storage, no permission needed
+
+    The HIGH_SAMPLING_RATE_SENSORS permission is required only if you register
+    sensors at rates faster than 200 Hz (SENSOR_DELAY_FASTEST on some devices).
+    The demo uses SENSOR_DELAY_GAME (~50 Hz) which does not need it.
+
+    Uncomment if you need >200 Hz:
+      <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <application
+        android:name=".DemoApplication"
+        android:allowBackup="false"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="false"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
+
+        <!--
+            allowBackup="false":
+            The encrypted baseline profile is keyed by an Android Keystore key
+            that is device-bound and NOT included in backups. Backing up the
+            encrypted blob would leave it permanently unreadable on a restored
+            device. Disable backups to avoid this.
+        -->
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:windowSoftInputMode="adjustResize">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+    </application>
+
+</manifest>
