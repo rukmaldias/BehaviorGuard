@@ -1,0 +1,12 @@
+/target
+Cargo.lock
+*.so
+*.a
+*.dylib
+*.dll
+__pycache__/
+*.pyc
+training/*.npy
+training/model.tflite
+training/enrolled_features.json
+.DS_Store
