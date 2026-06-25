@@ -33,10 +33,8 @@ pub struct BehaviorGuard {
 enum State {
     Enrolling(EnrollmentState),
     Ready {
-        profile: BaselineProfile,
-        /// Phase 2 autoencoder — trained at enrollment completion.
-        /// Falls back to z-score if None.
-        model: Option<Autoencoder>,
+        profile: Box<BaselineProfile>,
+        model: Option<Box<Autoencoder>>,
     },
 }
 
@@ -101,7 +99,7 @@ impl BehaviorGuard {
                         .map(|v| z_normalize(v, &profile))
                         .collect();
                     let model = Autoencoder::fit(&z_vecs).ok();
-                    self.state = State::Ready { profile, model };
+                    self.state = State::Ready { profile: Box::new(profile), model: model.map(Box::new) };
                     Ok(SessionOutcome::EnrollmentComplete)
                 } else {
                     let remaining = match &self.state {
@@ -146,7 +144,7 @@ impl BehaviorGuard {
     /// restored; call `import_model` separately if it was exported.
     pub fn import_profile(&mut self, blob: &[u8], key: &[u8; 32]) -> Result<()> {
         let profile = ProfileStore::open(blob, key)?;
-        self.state = State::Ready { profile, model: None };
+        self.state = State::Ready { profile: Box::new(profile), model: None };
         Ok(())
     }
 
@@ -166,7 +164,7 @@ impl BehaviorGuard {
     pub fn import_model(&mut self, bytes: &[u8]) -> Result<()> {
         match &mut self.state {
             State::Ready { model, .. } => {
-                *model = Some(Autoencoder::from_bytes(bytes)?);
+                *model = Some(Box::new(Autoencoder::from_bytes(bytes)?));
                 Ok(())
             }
             State::Enrolling(_) => Err(BgError::NotEnrolled(SESSIONS_REQUIRED)),

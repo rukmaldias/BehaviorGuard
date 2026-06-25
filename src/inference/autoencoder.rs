@@ -276,8 +276,8 @@ use crate::profile::enrollment::BaselineProfile;
 /// to prevent numerical blow-up when enrollment std is near its 1e-6 floor.
 pub fn z_normalize(fv: &FeatureVector, profile: &BaselineProfile) -> [f32; FEATURE_DIM] {
     let mut z = [0.0f32; FEATURE_DIM];
-    for i in 0..FEATURE_DIM {
-        z[i] = ((fv.0[i] - profile.mean[i]) / profile.std[i]).clamp(-Z_CLAMP, Z_CLAMP);
+    for (i, zi) in z.iter_mut().enumerate() {
+        *zi = ((fv.0[i] - profile.mean[i]) / profile.std[i]).clamp(-Z_CLAMP, Z_CLAMP);
     }
     z
 }

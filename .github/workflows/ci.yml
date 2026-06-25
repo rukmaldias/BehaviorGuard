@@ -106,6 +106,9 @@ jobs:
       - name: Install Rust stable
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Generate lockfile
+        run: cargo generate-lockfile
+
       - name: Audit for known CVEs
         uses: rustsec/audit-check@v2
         with:

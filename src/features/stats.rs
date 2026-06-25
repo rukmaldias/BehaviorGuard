@@ -1,4 +1,4 @@
-/// Statistical helper functions for feature extraction.
+//! Statistical helper functions for feature extraction.
 
 /// Returns (mean, std_dev) of a slice. Returns (0, 0) on empty input.
 pub fn mean_std(values: &[f32]) -> (f32, f32) {
@@ -26,7 +26,7 @@ pub fn percentile(sorted: &[f32], p: f32) -> f32 {
 }
 
 /// Sorts a slice in place and returns the median.
-pub fn median(values: &mut Vec<f32>) -> f32 {
+pub fn median(values: &mut [f32]) -> f32 {
     if values.is_empty() {
         return 0.0;
     }
