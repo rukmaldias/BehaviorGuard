@@ -1,6 +1,7 @@
 # BehaviorGuard
 
 On-device behavioral biometrics for Android. Scores user authenticity by modelling typing rhythm, touch patterns, and device motion — entirely in the native layer. No raw data ever leaves the device.
+**Full technical reference:** [`documentation`](https://rukmaldias.github.io/BehaviorGuard/) 
 
 ```
 User interaction → Signal collection → Feature extraction → Risk score (f32 0.0–1.0)
