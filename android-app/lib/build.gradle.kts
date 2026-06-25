@@ -81,8 +81,8 @@ afterEvaluate {
                     url         = "https://github.com/rukmaldias/BehaviorGuard"
                     licenses {
                         license {
-                            name = "MIT"
-                            url  = "https://opensource.org/licenses/MIT"
+                            name = "GPL-3.0-only"
+                            url  = "https://www.gnu.org/licenses/gpl-3.0.html"
                         }
                     }
                     developers {

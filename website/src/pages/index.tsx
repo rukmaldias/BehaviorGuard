@@ -42,7 +42,7 @@ function HeroBanner() {
   return (
     <div className="hero-banner">
       <div className="hero-badge">
-        <span>✦</span>&nbsp;v0.1.0 · MIT License
+        <span>✦</span>&nbsp;v0.1.0 · GPL-3.0 License
       </div>
       <Heading as="h1" className="hero-title">
         {siteConfig.title}

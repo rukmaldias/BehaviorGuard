@@ -226,4 +226,4 @@ No network calls, no analytics, no telemetry.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+GPL-3.0 — see [LICENSE](LICENSE).
