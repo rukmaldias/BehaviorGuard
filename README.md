@@ -37,13 +37,13 @@ Raw events are never stored. Feature vectors are never transmitted. Only a risk 
 
 ## Quickstart
 
-### 1 — Copy the Kotlin wrapper
+### 1. Copy the Kotlin wrapper
 
 ```sh
 cp android/BehaviorGuard.kt app/src/main/java/com/example/behaviorgaurd/BehaviorGuard.kt
 ```
 
-### 2 — Build the native library
+### 2. Build the native library
 
 ```sh
 cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 \
@@ -51,7 +51,7 @@ cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 \
   build --release --features jni
 ```
 
-### 3 — Integrate in your Activity
+### 3. Integrate in your Activity
 
 ```kotlin
 class MainActivity : AppCompatActivity() {
@@ -105,7 +105,7 @@ class MainActivity : AppCompatActivity() {
 }
 ```
 
-### 4 — Keystroke events (optional, higher accuracy)
+### 4. Keystroke events (optional, higher accuracy)
 
 Hook into your `EditText` via `TextWatcher` or `InputConnection`:
 
