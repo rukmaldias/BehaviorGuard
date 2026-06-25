@@ -181,6 +181,9 @@ class BehaviorGuard : AutoCloseable {
 
     fun isEnrolled(): Boolean = nativeIsEnrolled(handle)
 
+    /** True once the Phase 2 autoencoder has been trained and is active. */
+    fun isModelReady(): Boolean = nativeIsModelReady(handle)
+
     /**
      * Exports the encrypted baseline profile. Returns null if not yet enrolled.
      * @param key 32-byte AES key from Android Keystore.
@@ -189,10 +192,24 @@ class BehaviorGuard : AutoCloseable {
 
     /**
      * Imports a previously exported profile blob.
+     * After importing, call [importModel] to restore the Phase 2 autoencoder.
      * @param key 32-byte AES key from Android Keystore.
      */
     fun importProfile(blob: ByteArray, key: ByteArray): Boolean =
         nativeImportProfile(handle, blob, key)
+
+    /**
+     * Exports the Phase 2 autoencoder weights (~5 KB JSON).
+     * Returns null if enrollment is not complete or model training failed.
+     * Save alongside the profile blob and restore with [importModel].
+     */
+    fun exportModel(): ByteArray? = nativeExportModel(handle)
+
+    /**
+     * Restores a previously exported autoencoder.
+     * Must be called after [importProfile].
+     */
+    fun importModel(bytes: ByteArray): Boolean = nativeImportModel(handle, bytes)
 
     override fun close() {
         nativeDestroy(handle)
@@ -211,6 +228,9 @@ class BehaviorGuard : AutoCloseable {
     private external fun nativeExportProfile(handle: Long, key: ByteArray): ByteArray?
     private external fun nativeImportProfile(handle: Long, blob: ByteArray, key: ByteArray): Boolean
     private external fun nativeIsEnrolled(handle: Long): Boolean
+    private external fun nativeIsModelReady(handle: Long): Boolean
+    private external fun nativeExportModel(handle: Long): ByteArray?
+    private external fun nativeImportModel(handle: Long, bytes: ByteArray): Boolean
 
     companion object {
         init {

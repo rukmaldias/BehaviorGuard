@@ -228,3 +228,44 @@ pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeIsEnro
         .map(|g| if g.is_enrolled() { JNI_TRUE } else { 0 })
         .unwrap_or(0)
 }
+
+#[no_mangle]
+pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeIsModelReady(
+    _env: JNIEnv,
+    _class: JClass,
+    handle: jlong,
+) -> jboolean {
+    lock_guard(handle)
+        .map(|g| if g.is_model_ready() { JNI_TRUE } else { 0 })
+        .unwrap_or(0)
+}
+
+// ── Model persistence ────────────────────────────────────────────────────────
+
+#[no_mangle]
+pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeExportModel<'a>(
+    env: JNIEnv<'a>,
+    _class: JClass,
+    handle: jlong,
+) -> JObject<'a> {
+    let blob = lock_guard(handle).and_then(|g| g.export_model().ok().flatten());
+    match blob {
+        Some(b) => env.byte_array_from_slice(&b).map(JObject::from).unwrap_or(JObject::null()),
+        None => JObject::null(),
+    }
+}
+
+#[no_mangle]
+pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeImportModel<'a>(
+    env: JNIEnv<'a>,
+    _class: JClass,
+    handle: jlong,
+    bytes: JByteArray<'a>,
+) -> jboolean {
+    let raw: Vec<i8> = env.convert_byte_array(&bytes).unwrap_or_default();
+    let u8_bytes: Vec<u8> = raw.iter().map(|b| *b as u8).collect();
+    lock_guard(handle)
+        .and_then(|mut g| g.import_model(&u8_bytes).ok())
+        .map(|_| JNI_TRUE)
+        .unwrap_or(0)
+}
