@@ -14,4 +14,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "BehaviorGuardDemo"
+include(":lib")
 include(":app")

@@ -20,7 +20,7 @@ fn lock_guard(ptr: jlong) -> Option<std::sync::MutexGuard<'static, BehaviorGuard
 // ── Lifecycle ────────────────────────────────────────────────────────────────
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeCreate(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeCreate(
     _env: JNIEnv,
     _class: JClass,
 ) -> jlong {
@@ -30,7 +30,7 @@ pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeCreate
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeDestroy(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeDestroy(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -43,7 +43,7 @@ pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeDestro
 // ── Session ──────────────────────────────────────────────────────────────────
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeStartSession(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeStartSession(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -55,7 +55,7 @@ pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeStartS
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeEndSession(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeEndSession(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -73,7 +73,7 @@ pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeEndSes
 // ── Event ingestion ──────────────────────────────────────────────────────────
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeAddKeystroke(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeAddKeystroke(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -93,7 +93,7 @@ pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeAddKey
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeAddTouch(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeAddTouch(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -117,7 +117,7 @@ pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeAddTou
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeAddSwipe(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeAddSwipe(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -143,7 +143,7 @@ pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeAddSwi
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeAddMotion(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeAddMotion(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -171,20 +171,18 @@ pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeAddMot
 // ── Profile persistence ──────────────────────────────────────────────────────
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeExportProfile<'a>(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeExportProfile<'a>(
     env: JNIEnv<'a>,
     _class: JClass,
     handle: jlong,
     key: JByteArray<'a>,
 ) -> JObject<'a> {
-    let key_bytes: Vec<i8> = env.convert_byte_array(&key).unwrap_or_default();
+    let key_bytes: Vec<u8> = env.convert_byte_array(&key).unwrap_or_default();
     if key_bytes.len() != 32 {
         return JObject::null();
     }
     let mut key_arr = [0u8; 32];
-    for (i, b) in key_bytes.iter().enumerate() {
-        key_arr[i] = *b as u8;
-    }
+    key_arr.copy_from_slice(&key_bytes);
     let blob = lock_guard(handle)
         .and_then(|g| g.export_profile(&key_arr).ok().flatten());
 
@@ -195,31 +193,28 @@ pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeExport
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeImportProfile<'a>(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeImportProfile<'a>(
     env: JNIEnv<'a>,
     _class: JClass,
     handle: jlong,
     blob: JByteArray<'a>,
     key: JByteArray<'a>,
 ) -> jboolean {
-    let blob_bytes: Vec<i8> = env.convert_byte_array(&blob).unwrap_or_default();
-    let key_bytes: Vec<i8> = env.convert_byte_array(&key).unwrap_or_default();
+    let blob_bytes: Vec<u8> = env.convert_byte_array(&blob).unwrap_or_default();
+    let key_bytes:  Vec<u8> = env.convert_byte_array(&key).unwrap_or_default();
     if key_bytes.len() != 32 {
         return 0;
     }
     let mut key_arr = [0u8; 32];
-    for (i, b) in key_bytes.iter().enumerate() {
-        key_arr[i] = *b as u8;
-    }
-    let blob_u8: Vec<u8> = blob_bytes.iter().map(|b| *b as u8).collect();
+    key_arr.copy_from_slice(&key_bytes);
     lock_guard(handle)
-        .and_then(|mut g| g.import_profile(&blob_u8, &key_arr).ok())
+        .and_then(|mut g| g.import_profile(&blob_bytes, &key_arr).ok())
         .map(|_| JNI_TRUE)
         .unwrap_or(0)
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeIsEnrolled(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeIsEnrolled(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -230,7 +225,7 @@ pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeIsEnro
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeIsModelReady(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeIsModelReady(
     _env: JNIEnv,
     _class: JClass,
     handle: jlong,
@@ -243,7 +238,7 @@ pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeIsMode
 // ── Model persistence ────────────────────────────────────────────────────────
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeExportModel<'a>(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeExportModel<'a>(
     env: JNIEnv<'a>,
     _class: JClass,
     handle: jlong,
@@ -256,16 +251,15 @@ pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeExport
 }
 
 #[no_mangle]
-pub extern "system" fn Java_com_example_behaviorgaurd_BehaviorGuard_nativeImportModel<'a>(
+pub extern "system" fn Java_com_behaviorgaurd_BehaviorGuard_nativeImportModel<'a>(
     env: JNIEnv<'a>,
     _class: JClass,
     handle: jlong,
     bytes: JByteArray<'a>,
 ) -> jboolean {
-    let raw: Vec<i8> = env.convert_byte_array(&bytes).unwrap_or_default();
-    let u8_bytes: Vec<u8> = raw.iter().map(|b| *b as u8).collect();
+    let bytes_u8: Vec<u8> = env.convert_byte_array(&bytes).unwrap_or_default();
     lock_guard(handle)
-        .and_then(|mut g| g.import_model(&u8_bytes).ok())
+        .and_then(|mut g| g.import_model(&bytes_u8).ok())
         .map(|_| JNI_TRUE)
         .unwrap_or(0)
 }

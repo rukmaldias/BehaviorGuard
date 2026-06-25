@@ -1,27 +1,9 @@
 // ══════════════════════════════════════════════════════════════════════════════
-//  app/build.gradle.kts — BehaviorGuard Demo
-// ══════════════════════════════════════════════════════════════════════════════
+//  :app — BehaviorGuard Demo
 //
-//  INTEGRATION NOTES
-//  ─────────────────
-//  1. Build the native library before opening this project in Android Studio:
-//
-//       cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 \
-//           -o android-app/app/src/main/jniLibs \
-//           build --release --features jni
-//
-//     The output .so goes to:
-//       app/src/main/jniLibs/arm64-v8a/libbehavior_guard.so
-//       app/src/main/jniLibs/armeabi-v7a/libbehavior_guard.so
-//       app/src/main/jniLibs/x86_64/libbehavior_guard.so
-//
-//  2. Copy the Kotlin wrapper alongside the demo Activity:
-//
-//       cp android/BehaviorGuard.kt \
-//          android-app/app/src/main/java/com/example/behaviorgaurd/BehaviorGuard.kt
-//
-//  3. ProGuard / R8: see proguard-rules.pro.
-//
+//  Before building, run the native library build script from the repo root:
+//    ./build-android.sh
+//  This compiles libbehavior_guard.so for all ABIs and copies it into :lib.
 // ══════════════════════════════════════════════════════════════════════════════
 
 plugins {
@@ -73,6 +55,7 @@ android {
 }
 
 dependencies {
+    implementation(project(":lib"))
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
 }
