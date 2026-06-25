@@ -1,54 +1,57 @@
 # BehaviorGuard
 
-On-device behavioral biometrics for Android. Models typing rhythm, touch patterns, and device motion to score user authenticity — entirely on-device. No raw data ever leaves the device.
-
----
-
-## How it works
+On-device behavioral biometrics for Android. Scores user authenticity by modelling typing rhythm, touch patterns, and device motion — entirely in the native layer. No raw data ever leaves the device.
 
 ```
-User interaction (typing, swiping, holding device)
-        │
-        ▼
-Signal collection — KeystrokeEvent, TouchEvent, SwipeEvent, MotionEvent
-        │
-        ▼
-Feature extraction — 32 statistical features per session
-        │
-        ├─ Enrollment (first 5 sessions) ──► BaselineProfile (encrypted on-device)
-        │
-        └─ Scoring (after enrollment) ──────► RiskScore { score: 0.0–1.0, confidence }
+User interaction → Signal collection → Feature extraction → Risk score (f32 0.0–1.0)
 ```
 
-Raw events are never stored. Feature vectors are never transmitted. Only a risk score leaves the native layer.
+---
+
+## At a glance
+
+| Property | Value |
+|---|---|
+| Language | Rust (core) + Kotlin (wrapper) |
+| Signal types | Keystroke timing · Touch pressure/area · Swipe velocity · IMU (gyro + accel) |
+| Feature vector | 32 statistical features per session |
+| Scorer — Phase 1 | Mean absolute z-score vs enrolled baseline |
+| Scorer — Phase 2 | Per-user autoencoder trained on-device at enrollment (32→16→8→16→32) |
+| Profile encryption | AES-256-GCM, key from Android Keystore |
+| Enrollment sessions | 5 |
+| Output | `f32` risk score + confidence, no raw events exported |
+| Min SDK | 24 (Android 7.0) |
+| ABI targets | `arm64-v8a` · `armeabi-v7a` · `x86_64` |
 
 ---
 
-## Signal sources
+## Quick integration
 
-| Signal | Android API | Features extracted |
-|---|---|---|
-| Keystroke dynamics | `InputConnection` / `KeyEvent` | Dwell time, flight time, correction rate |
-| Touch | `MotionEvent` | Tap duration, pressure, contact area |
-| Swipe / scroll | `MotionEvent` | Distance, average velocity, peak velocity |
-| Device motion | `SensorManager` (gyro + accel) | Angular velocity, linear acceleration per axis |
-
----
-
-## Quickstart
-
-### 1. Copy the Kotlin wrapper
+### 1. Build the native library and AAR
 
 ```sh
-cp android/BehaviorGuard.kt app/src/main/java/com/example/behaviorgaurd/BehaviorGuard.kt
+git clone https://github.com/rukmaldias/BehaviorGuard
+cd BehaviorGuard
+
+# Requires: Rust stable ≥ 1.75, cargo-ndk, Android NDK r25+
+./build-android.sh --publish-local
 ```
 
-### 2. Build the native library
+### 2. Add the dependency
 
-```sh
-cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 \
-  -o app/src/main/jniLibs \
-  build --release --features jni
+```kotlin
+// settings.gradle.kts
+dependencyResolutionManagement {
+    repositories {
+        mavenLocal()
+        // ...
+    }
+}
+
+// app/build.gradle.kts
+dependencies {
+    implementation("com.behaviorgaurd:behavior-guard:0.1.0")
+}
 ```
 
 ### 3. Integrate in your Activity
@@ -56,135 +59,152 @@ cargo ndk -t arm64-v8a -t armeabi-v7a -t x86_64 \
 ```kotlin
 class MainActivity : AppCompatActivity() {
 
-    private val guard = BehaviorGuard()
-    private lateinit var sensorListener: SensorEventListener
+    // One instance per user — keep long-lived (ViewModel recommended).
+    // Automatically restores profile + Phase 2 model on construction.
+    private lateinit var manager: BehaviorGuardManager
     private val sensorManager by lazy { getSystemService(SensorManager::class.java) }
 
-    override fun onResume() {
-        super.onResume()
-        guard.startSession()
-        sensorListener = guard.registerSensors(sensorManager)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        manager = BehaviorGuardManager(this)
     }
 
+    // Call at the start of each interaction period
+    fun onInteractionStart() {
+        manager.startSession(sensorManager)   // registers gyro + accel
+    }
+
+    // Forward every touch event
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
-        guard.onTouchEvent(ev, windowManager.defaultDisplay.width, windowManager.defaultDisplay.height)
+        val w = window.decorView.width
+        val h = window.decorView.height
+        manager.onTouchEvent(ev, w, h)
         return super.dispatchTouchEvent(ev)
     }
 
-    override fun onPause() {
-        super.onPause()
-        guard.unregisterSensors(sensorManager, sensorListener)
-        when (val outcome = guard.endSession()) {
-            is SessionOutcome.Enrolling -> {
-                Log.d("BG", "Enrolling: ${outcome.sessionsRemaining} sessions left")
-            }
-            is SessionOutcome.EnrollmentComplete -> {
-                Log.d("BG", "Enrollment complete — scoring now available")
-                saveProfile()
-            }
-            is SessionOutcome.Scored -> {
-                Log.d("BG", "Risk score: ${outcome.score} (confidence: ${outcome.confidence})")
-                if (outcome.score > 0.7f) triggerStepUpAuth()
-            }
-            is SessionOutcome.Error -> Log.w("BG", outcome.message)
-        }
-    }
+    // Call when the interaction period ends
+    fun onInteractionEnd() {
+        when (val outcome = manager.endSession(sensorManager)) {
+            is SessionOutcome.Enrolling ->
+                showProgress(outcome.sessionsRemaining)
 
-    private fun saveProfile() {
-        val key = getKeystoreKey()  // 32-byte AES key from Android Keystore
-        val blob = guard.exportProfile(key) ?: return
-        prefs.edit()
-            .putString("bg_profile", Base64.encodeToString(blob, Base64.NO_WRAP))
-            .apply()
+            is SessionOutcome.EnrollmentComplete ->
+                showReady()
+
+            is SessionOutcome.Scored -> {
+                if (outcome.score > 0.7f) triggerStepUpAuth()
+                log("risk=${outcome.score}, confidence=${outcome.confidence}")
+            }
+
+            is SessionOutcome.Error ->
+                log(outcome.message)
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        guard.close()
+        manager.close()
     }
 }
 ```
 
-### 4. Keystroke events (optional, higher accuracy)
+`BehaviorGuardManager` handles key generation, profile encryption, autoencoder model persistence, and sensor lifecycle automatically.
 
-Hook into your `EditText` via `TextWatcher` or `InputConnection`:
-
-```kotlin
-editText.addTextChangedListener(object : TextWatcher {
-    private var lastUpMs = -1L
-
-    override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-    override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
-
-    override fun afterTextChanged(s: Editable) {
-        val now = System.currentTimeMillis()
-        val flight = if (lastUpMs < 0) -1L else now - lastUpMs
-        val isCorrection = s.length < (s.length + 1) // backspace
-        guard.onKeystroke(downMs = now, upMs = now + 80L, flightMs = flight, isCorrection = isCorrection)
-        lastUpMs = now + 80L
-    }
-})
-```
+For keystroke timing, see [Integration Guide → Keystroke events](docs/integration-guide.md#keystroke-events).
 
 ---
 
-## Risk score interpretation
+## Risk score
 
-| Score | Meaning | Suggested action |
+| Score | Interpretation | Suggested action |
 |---|---|---|
 | 0.0 – 0.3 | Matches enrolled baseline | Allow |
-| 0.3 – 0.6 | Moderate deviation | Log, monitor |
-| 0.6 – 0.7 | Significant deviation | Soft challenge (PIN prompt) |
-| 0.7 – 1.0 | High anomaly | Step-up authentication or block |
+| 0.3 – 0.6 | Moderate deviation | Log / monitor |
+| 0.6 – 0.7 | Significant deviation | Soft challenge (PIN, FaceID re-prompt) |
+| 0.7 – 1.0 | High anomaly | Step-up auth or block |
 
-Thresholds are application-dependent. Tune based on your false-positive tolerance.
-
----
-
-## Enrollment
-
-The first **5 sessions** are used to build the baseline profile. During enrollment, `endSession()` returns `SessionOutcome.Enrolling` with the number of sessions remaining. After the 5th session it returns `SessionOutcome.EnrollmentComplete` and all subsequent sessions return `SessionOutcome.Scored`.
-
-The profile is stored encrypted (AES-256-GCM). Supply a 32-byte key from Android Keystore to `exportProfile` / `importProfile` for persistence across app launches.
+Thresholds are application-dependent. Tune based on your false-positive tolerance and risk appetite.
 
 ---
 
-## Phase 2 — TFLite autoencoder (upcoming)
-
-The current scorer uses statistical z-score distance. Phase 2 replaces it with an on-device autoencoder:
+## How it works
 
 ```
-training/
-├── train_autoencoder.py   # Train in Python, export to .tflite
-└── requirements.txt       # tensorflow, numpy
+Session signals (touch, keys, swipe, motion)
+         │
+         ▼
+Feature extraction — 32-dim statistical vector
+         │
+         ├─── First 5 sessions ──► Enrollment
+         │                              │
+         │              ┌───────────────┴──────────────────┐
+         │              │                                  │
+         │       BaselineProfile                    Autoencoder
+         │       (mean + std per feature)           (trained on z-normalised
+         │                                           enrollment vectors)
+         │
+         └─── After enrollment ──► Scoring
+                                        │
+                          ┌─────────────┴──────────────┐
+                          │                            │
+                    Phase 1 (fallback)          Phase 2 (default)
+                    z-score distance            Autoencoder reconstruction
+                    from baseline               error — captures joint
+                                                feature correlations
 ```
+
+Both the profile and the autoencoder weights are AES-256-GCM encrypted at rest. The 32-byte key lives in Android Keystore and never leaves the device.
+
+See [Architecture](docs/architecture.md) for the feature layout and training procedure.
+
+---
+
+## Build from source
+
+**Prerequisites**
+
+| Tool | Install |
+|---|---|
+| Rust stable ≥ 1.75 | `rustup update stable` |
+| Android NDK r25+ | Android Studio → SDK Manager → NDK |
+| cargo-ndk | `cargo install cargo-ndk` |
+| Android targets | `rustup target add aarch64-linux-android armv7-linux-androideabi x86_64-linux-android` |
+
+**Build**
 
 ```sh
-cd training
-pip install -r requirements.txt
-python train_autoencoder.py --data enrolled_features.json --out model.tflite
+./build-android.sh               # build .so + assemble AAR
+./build-android.sh --debug       # debug build
+./build-android.sh --publish-local   # build + publish to ~/.m2/
 ```
 
-The exported `model.tflite` is bundled in the APK's `assets/` folder. The native layer loads it via the TFLite C API at startup.
+The AAR is written to `android-app/lib/build/outputs/aar/`.
+
+**Run the demo app**
+
+Open `android-app/` in Android Studio. `:app` depends on `:lib` via a project dependency — no additional setup after running the build script.
 
 ---
 
-## Architecture
+## Autoencoder validation
 
+```sh
+pip install -r scripts/requirements.txt
+python scripts/validate_autoencoder.py
 ```
-behavior_guard (Rust crate)
-├── signals/          KeystrokeEvent, TouchEvent, SwipeEvent, MotionEvent
-├── features/         32-feature statistical extractor
-├── profile/          EnrollmentState, BaselineProfile, ProfileStore (AES-256-GCM)
-├── inference/        Scorer (z-score Phase 1 → TFLite Phase 2)
-└── jni_api.rs        JNI exports for Android
 
-android/
-└── BehaviorGuard.kt  Kotlin wrapper + SensorManager integration
+Trains the autoencoder on 50 synthetic users and reports EER, FAR/FRR curve, and enrolled vs impostor MSE distributions. Useful for tuning hyperparameters before a Rust recompile.
 
-training/
-└── train_autoencoder.py  Python training script → .tflite export
-```
+---
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [Integration Guide](docs/integration-guide.md) | Step-by-step Android integration, event types, persistence |
+| [API Reference](docs/api-reference.md) | `BehaviorGuardManager`, `BehaviorGuard`, `SessionOutcome` |
+| [Architecture](docs/architecture.md) | Signal pipeline, feature layout, Phase 1/2 scoring |
+| [Threat Model](docs/threat-model.md) | What BehaviorGuard does and does not protect against |
 
 ---
 
@@ -193,19 +213,15 @@ training/
 | Data | Stays on device | Can leave device |
 |---|---|---|
 | Raw touch / keystroke events | ✓ | — |
-| Feature vectors | ✓ | — |
+| Feature vectors (32 f32) | ✓ | — |
 | Baseline profile (encrypted) | ✓ | — |
-| Risk score | — | ✓ (float 0–1) |
-| Anomaly flag | — | ✓ (bool) |
+| Autoencoder weights (encrypted) | ✓ | — |
+| Risk score | — | ✓ (single f32) |
+
+No network calls, no analytics, no telemetry.
 
 ---
 
-## Requirements
+## License
 
-| Tool | Version |
-|---|---|
-| Rust stable | ≥ 1.75 |
-| Android NDK | r25+ (r27 recommended) |
-| cargo-ndk | latest |
-| minSdk | 24 (Android 7.0) |
-| Python (training only) | ≥ 3.10 |
+MIT — see [LICENSE](LICENSE).

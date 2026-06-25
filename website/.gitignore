@@ -1,0 +1,10 @@
+# Docusaurus build output
+.docusaurus
+build
+
+# Dependencies
+node_modules
+
+# Misc
+.DS_Store
+.env
