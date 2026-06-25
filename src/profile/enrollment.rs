@@ -76,3 +76,84 @@ impl EnrollmentState {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::features::FEATURE_DIM;
+    use approx::assert_abs_diff_eq;
+
+    fn make_fv(value: f32) -> FeatureVector {
+        FeatureVector([value; FEATURE_DIM])
+    }
+
+    #[test]
+    fn enrollment_starts_incomplete() {
+        let e = EnrollmentState::default();
+        assert!(!e.is_complete());
+        assert_eq!(e.sessions_remaining(), SESSIONS_REQUIRED);
+        assert!(e.build_profile().is_none());
+    }
+
+    #[test]
+    fn enrollment_completes_at_required_count() {
+        let mut e = EnrollmentState::default();
+        for i in 0..SESSIONS_REQUIRED {
+            assert!(!e.is_complete());
+            assert_eq!(e.sessions_remaining(), SESSIONS_REQUIRED - i);
+            e.add(make_fv(i as f32));
+        }
+        assert!(e.is_complete());
+        assert_eq!(e.sessions_remaining(), 0);
+        assert!(e.build_profile().is_some());
+    }
+
+    #[test]
+    fn baseline_mean_correct_for_uniform_input() {
+        let mut e = EnrollmentState::default();
+        for _ in 0..SESSIONS_REQUIRED {
+            e.add(make_fv(4.0));
+        }
+        let profile = e.build_profile().unwrap();
+        for i in 0..FEATURE_DIM {
+            assert_abs_diff_eq!(profile.mean[i], 4.0, epsilon = 1e-5);
+        }
+    }
+
+    #[test]
+    fn baseline_std_zero_for_identical_sessions() {
+        let mut e = EnrollmentState::default();
+        for _ in 0..SESSIONS_REQUIRED {
+            e.add(make_fv(7.0));
+        }
+        let profile = e.build_profile().unwrap();
+        // std is floored at 1e-6 to avoid division by zero in scorer
+        for i in 0..FEATURE_DIM {
+            assert!(profile.std[i] <= 1e-4, "std should be near zero: {}", profile.std[i]);
+        }
+    }
+
+    #[test]
+    fn baseline_mean_correct_for_two_values() {
+        let mut e = EnrollmentState::default();
+        for i in 0..SESSIONS_REQUIRED {
+            // alternate 0.0 and 10.0 → mean = 5.0 or 4.0 depending on count
+            e.add(make_fv(if i % 2 == 0 { 0.0 } else { 10.0 }));
+        }
+        let profile = e.build_profile().unwrap();
+        // With 5 sessions: 0,10,0,10,0 → mean = 4.0
+        for i in 0..FEATURE_DIM {
+            assert_abs_diff_eq!(profile.mean[i], 4.0, epsilon = 1e-4);
+        }
+    }
+
+    #[test]
+    fn session_count_stored_in_profile() {
+        let mut e = EnrollmentState::default();
+        for _ in 0..SESSIONS_REQUIRED {
+            e.add(make_fv(1.0));
+        }
+        let profile = e.build_profile().unwrap();
+        assert_eq!(profile.session_count, SESSIONS_REQUIRED);
+    }
+}

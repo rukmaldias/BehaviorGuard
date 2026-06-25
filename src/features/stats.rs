@@ -33,3 +33,83 @@ pub fn median(values: &mut Vec<f32>) -> f32 {
     values.sort_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal));
     percentile(values, 50.0)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use approx::assert_abs_diff_eq;
+
+    #[test]
+    fn mean_std_known_values() {
+        let (m, s) = mean_std(&[2.0, 4.0, 4.0, 4.0, 5.0, 5.0, 7.0, 9.0]);
+        assert_abs_diff_eq!(m, 5.0, epsilon = 1e-4);
+        assert_abs_diff_eq!(s, 2.0, epsilon = 1e-4);
+    }
+
+    #[test]
+    fn mean_std_single_element() {
+        let (m, s) = mean_std(&[42.0]);
+        assert_abs_diff_eq!(m, 42.0, epsilon = 1e-6);
+        assert_abs_diff_eq!(s, 0.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn mean_std_empty() {
+        assert_eq!(mean_std(&[]), (0.0, 0.0));
+    }
+
+    #[test]
+    fn mean_std_identical_values() {
+        let (m, s) = mean_std(&[3.0, 3.0, 3.0, 3.0]);
+        assert_abs_diff_eq!(m, 3.0, epsilon = 1e-6);
+        assert_abs_diff_eq!(s, 0.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn percentile_median_of_odd_list() {
+        let sorted = [1.0, 2.0, 3.0, 4.0, 5.0];
+        assert_abs_diff_eq!(percentile(&sorted, 50.0), 3.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn percentile_min_max() {
+        let sorted = [1.0, 2.0, 3.0, 4.0, 5.0];
+        assert_abs_diff_eq!(percentile(&sorted, 0.0), 1.0, epsilon = 1e-6);
+        assert_abs_diff_eq!(percentile(&sorted, 100.0), 5.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn percentile_interpolates() {
+        let sorted = [0.0, 10.0];
+        // p=25 → idx=0.25 → 0*0.75 + 10*0.25 = 2.5
+        assert_abs_diff_eq!(percentile(&sorted, 25.0), 2.5, epsilon = 1e-4);
+    }
+
+    #[test]
+    fn percentile_single_element() {
+        assert_abs_diff_eq!(percentile(&[7.0], 50.0), 7.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn percentile_empty() {
+        assert_abs_diff_eq!(percentile(&[], 50.0), 0.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn median_unsorted_input() {
+        let mut v = vec![5.0, 3.0, 1.0, 4.0, 2.0];
+        assert_abs_diff_eq!(median(&mut v), 3.0, epsilon = 1e-6);
+    }
+
+    #[test]
+    fn median_even_count_interpolates() {
+        let mut v = vec![1.0, 2.0, 3.0, 4.0];
+        // sorted [1,2,3,4], p=50 → idx=1.5 → 2*0.5 + 3*0.5 = 2.5
+        assert_abs_diff_eq!(median(&mut v), 2.5, epsilon = 1e-4);
+    }
+
+    #[test]
+    fn median_empty() {
+        assert_abs_diff_eq!(median(&mut vec![]), 0.0, epsilon = 1e-6);
+    }
+}
